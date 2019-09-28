@@ -1,2 +1,2 @@
-# disaster_response
-Project Disaster Response Pipeline for Udacity Data Science class
+# Disaster Response Pipeline
+Project for Data Science class at Udacity
