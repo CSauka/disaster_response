@@ -5,6 +5,10 @@ from sqlalchemy import create_engine
 
 import nltk
 from nltk.tokenize import word_tokenize
+from nltk.stem.wordnet import WordNetLemmatizer
+from nltk.corpus import stopwords
+nltk.download("punkt")
+nltk.download("stopwords")
 
 from sklearn.model_selection import train_test_split
 from sklearn.pipeline import Pipeline
@@ -17,12 +21,11 @@ from sklearn.model_selection import GridSearchCV
 
 import pickle
 
-nltk.download("punkt")
 
 def load_data(database_filepath):
     """load messages from database"""
     engine = create_engine("sqlite:///" + database_filepath)
-    df = pd.read_sql("messages", engine)[:1000]
+    df = pd.read_sql("messages", engine)
     X = df["message"]
     Y = df.iloc[:, -36:]
     labels = df.columns[-36:]
@@ -33,15 +36,19 @@ def load_data(database_filepath):
 def tokenize(text):
     """tokenizer to be used within the CountVectorizer"""
     text = re.sub(r"[^a-zA-Z0-9]", " ", text).lower()
-    return word_tokenize(text)
+    tokens = word_tokenize(text)
+    compact = [tok for tok in tokens if tok not in stopwords.words("english")]
+    lemmed = [WordNetLemmatizer().lemmatize(word) for word in compact]
+
+    return lemmed
 
 
 def build_model():
     pipeline = Pipeline([("vectorizer", CountVectorizer(tokenizer=tokenize)),
-                     ("tfidf", TfidfTransformer()),
-                     ("clf", MultiOutputClassifier(DecisionTreeClassifier()))])
+                         ("tfidf", TfidfTransformer()),
+                         ("clf", MultiOutputClassifier(DecisionTreeClassifier()))])
     parameters = {"clf__estimator__max_depth": [5, 10, None],
-                  "clf__estimator__min_samples_split": [2, 3, 4]}
+                  "clf__estimator__min_samples_split": [3, 4]}
     model = GridSearchCV(pipeline, param_grid=parameters, cv=5)
 
     return model

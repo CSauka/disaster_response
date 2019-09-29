@@ -5,6 +5,7 @@ import pandas as pd
 import nltk
 from nltk.stem import WordNetLemmatizer
 from nltk.tokenize import word_tokenize
+from nltk.corpus import stopwords
 
 from flask import Flask
 from flask import render_template, request, jsonify
@@ -13,6 +14,7 @@ from sklearn.externals import joblib
 from sqlalchemy import create_engine
 
 nltk.download("wordnet")
+nltk.download("stopwords")
 
 app = Flask(__name__)
 
@@ -22,8 +24,9 @@ def tokenize(text):
 
     clean_tokens = []
     for tok in tokens:
-        clean_tok = lemmatizer.lemmatize(tok).lower().strip()
-        clean_tokens.append(clean_tok)
+        if tok not in stopwords.words("english"):
+            clean_tok = lemmatizer.lemmatize(tok).lower().strip()
+            clean_tokens.append(clean_tok)
 
     return clean_tokens
 
