@@ -3,6 +3,7 @@ import re
 import pandas as pd
 from sqlalchemy import create_engine
 
+import nltk
 from nltk.tokenize import word_tokenize
 
 from sklearn.model_selection import train_test_split
@@ -12,15 +13,21 @@ from sklearn.ensemble import RandomForestClassifier
 from sklearn.multioutput import MultiOutputClassifier
 from sklearn.feature_extraction.text import CountVectorizer, TfidfTransformer
 from sklearn.metrics import classification_report, multilabel_confusion_matrix
-from sklearn.grid_search import GridSearchCV
+from sklearn.model_selection import GridSearchCV
 
+import pickle
+
+nltk.download("punkt")
 
 def load_data(database_filepath):
     """load messages from database"""
     engine = create_engine("sqlite:///" + database_filepath)
-    df = pd.read_sql("messages", engine).iloc[:1000]
+    df = pd.read_sql("messages", engine)[:1000]
     X = df["message"]
     Y = df.iloc[:, -36:]
+    labels = df.columns[-36:]
+
+    return X, Y, labels
 
 
 def tokenize(text):
@@ -35,7 +42,7 @@ def build_model():
                      ("clf", MultiOutputClassifier(DecisionTreeClassifier()))])
     parameters = {"clf__estimator__max_depth": [5, 10, None],
                   "clf__estimator__min_samples_split": [2, 3, 4]}
-    model = GridSearchCV(pipeline, param_grid=parameters)
+    model = GridSearchCV(pipeline, param_grid=parameters, cv=5)
 
     return model
 
@@ -43,9 +50,11 @@ def build_model():
 def evaluate_model(model, X_test, Y_test, category_names):
     """make and score predictions based on the given model"""
     Y_pred = model.predict(X_test)
-    for col in range(Y_pred.shape[1]):
-        print(category_names[col].upper())
-        print(classification_report(Y_test.values[:,col], Y_pred[:,col]))
+#    for col in range(Y_pred.shape[1]):
+#        print(category_names[col].upper())
+#        print(classification_report(Y_test.values[:,col], Y_pred[:,col]))
+    print(classification_report(Y_test.values, Y_pred, target_names=category_names))
+#    print(multilabel_confusion_matrix(Y_test.values, Y_pred))
 
 
 def save_model(model, model_filepath):

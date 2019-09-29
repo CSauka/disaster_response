@@ -21,12 +21,16 @@ def clean_data(df):
     category_colnames = row.apply(lambda x: x[:-2]).tolist()
     categories.columns = category_colnames
 
+    # extract number from category values
+    for col in category_colnames:
+        categories[col] = categories[col].str.replace(col, "").str.replace("-", "")
+        categories[col] = categories[col].astype(int)
+
     # replace original categories column
     df.drop("categories", axis=1, inplace=True)
     df = pd.concat([df, categories], axis=1)
 
     # remove duplicate rows and rows containing undefined values
-    df.drop_duplicates(inplace=True)
     df.drop(index=df[(df[category_colnames].values != 0) & (df[category_colnames].values != 1)].index,
             inplace=True)
 
@@ -35,7 +39,8 @@ def clean_data(df):
 
 def save_data(df, database_filename):
     engine = create_engine("sqlite:///" + database_filename)
-    df.to_sql('messages', engine, index=False, if_exists="replace")
+    print(f"Shape of data to be saved: {df.shape}")
+    df.to_sql("messages", engine, index=False, if_exists="replace")
 
 
 def main():
