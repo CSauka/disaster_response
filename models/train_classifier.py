@@ -6,7 +6,7 @@ from sqlalchemy import create_engine
 import nltk
 from nltk.tokenize import word_tokenize
 from nltk.stem.wordnet import WordNetLemmatizer
-from nltk.corpus import stopwords
+
 nltk.download("punkt")
 nltk.download("stopwords")
 
@@ -15,16 +15,16 @@ from sklearn.pipeline import Pipeline
 from sklearn.ensemble import AdaBoostClassifier
 from sklearn.multioutput import MultiOutputClassifier
 from sklearn.feature_extraction.text import CountVectorizer, TfidfTransformer
-from sklearn.metrics import classification_report, multilabel_confusion_matrix
+from sklearn.metrics import classification_report
 from sklearn.model_selection import GridSearchCV
 
 import pickle
 
 
 def load_data(database_filepath):
-    """load messages from database"""
+    """loads messages from the database"""
     engine = create_engine("sqlite:///" + database_filepath)
-    df = pd.read_sql("messages", engine)[:1000]
+    df = pd.read_sql("messages", engine)
     X = df["message"]
     Y = df.iloc[:, -36:]
     labels = df.columns[-36:]
@@ -33,7 +33,11 @@ def load_data(database_filepath):
 
 
 def tokenize(text):
-    """tokenizer to be used within the CountVectorizer"""
+    """specifies tokenizer to be used within the CountVectorizer"""
+    # stopwords are imported inside the function to prevent a pickling error
+    # when running grid search on multipe CPUs
+    # (pickle.PicklingError: args[0] from __newobj__ args has the wrong class)
+    from nltk.corpus import stopwords
     text = re.sub(r"[^a-zA-Z0-9]", " ", text).lower()
     tokens = word_tokenize(text)
     compact = [tok for tok in tokens if tok not in stopwords.words("english")]
@@ -43,31 +47,30 @@ def tokenize(text):
 
 
 def build_model():
-    """compile and return a model consisting of a sklearn pipeline and
+    """compiles and returns a model consisting of a sklearn pipeline and
     corresponding grid search parameters
     """
     pipeline = Pipeline([("vectorizer", CountVectorizer(tokenizer=tokenize)),
                          ("tfidf", TfidfTransformer()),
                          ("clf", MultiOutputClassifier(AdaBoostClassifier()))])
     parameters = {"clf__estimator__n_estimators": [25, 50],
-                  "clf__estimator__learning_rate": [0.7, 0.8, 0.9]}
-    model = GridSearchCV(pipeline, param_grid=parameters, cv=5)
+                  "clf__estimator__learning_rate": [0.7, 0.8]}
+    model = GridSearchCV(pipeline, param_grid=parameters, n_jobs=-2, cv=5,
+                         verbose=2)
 
     return model
 
 
 def evaluate_model(model, X_test, Y_test, category_names):
-    """make and score predictions based on the given model"""
+    """makes and scores predictions based on the given model"""
     Y_pred = model.predict(X_test)
     for col in range(Y_pred.shape[1]):
         print(category_names[col].upper())
         print(classification_report(Y_test.values[:,col], Y_pred[:,col]))
-#    print(classification_report(Y_test.values, Y_pred, target_names=category_names))
-#    print(multilabel_confusion_matrix(Y_test.values, Y_pred))
 
 
 def save_model(model, model_filepath):
-    """save the trained model in a pickle file"""
+    """saves the trained model into pickle file"""
     pickle.dump(model, open(model_filepath, 'wb'))
 
 
