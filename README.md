@@ -1,6 +1,7 @@
 # Disaster Response Pipeline
 Project for Data Science class at Udacity
 
+<br>
 
 ### Contents
 
@@ -52,6 +53,8 @@ A. **Interpretation of classification scores**<br>
 
 B. **Potential improvements of the model**<br>
 The fitting of the model could likely be improved by employing resampling techniques specifically designed to handle imbalanced data. Methods such as under-sampling or over-sampling could be considered in particular - see e.g. the [imbalanced-learn package](https://imbalanced-learn.org/en/stable/index.html).
+
+<br>
 
 ### Acknowledgements
 Many thanks to **Figure Eight** for sharing the disaster messages and their classifications used in this project!
