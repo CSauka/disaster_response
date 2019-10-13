@@ -12,8 +12,7 @@ nltk.download("stopwords")
 
 from sklearn.model_selection import train_test_split
 from sklearn.pipeline import Pipeline
-from sklearn.tree import DecisionTreeClassifier
-from sklearn.ensemble import RandomForestClassifier
+from sklearn.ensemble import AdaBoostClassifier
 from sklearn.multioutput import MultiOutputClassifier
 from sklearn.feature_extraction.text import CountVectorizer, TfidfTransformer
 from sklearn.metrics import classification_report, multilabel_confusion_matrix
@@ -25,7 +24,7 @@ import pickle
 def load_data(database_filepath):
     """load messages from database"""
     engine = create_engine("sqlite:///" + database_filepath)
-    df = pd.read_sql("messages", engine)
+    df = pd.read_sql("messages", engine)[:1000]
     X = df["message"]
     Y = df.iloc[:, -36:]
     labels = df.columns[-36:]
@@ -44,11 +43,14 @@ def tokenize(text):
 
 
 def build_model():
+    """compile and return a model consisting of a sklearn pipeline and
+    corresponding grid search parameters
+    """
     pipeline = Pipeline([("vectorizer", CountVectorizer(tokenizer=tokenize)),
                          ("tfidf", TfidfTransformer()),
-                         ("clf", MultiOutputClassifier(DecisionTreeClassifier()))])
-    parameters = {"clf__estimator__max_depth": [5, 10, None],
-                  "clf__estimator__min_samples_split": [3, 4]}
+                         ("clf", MultiOutputClassifier(AdaBoostClassifier()))])
+    parameters = {"clf__estimator__n_estimators": [25, 50],
+                  "clf__estimator__learning_rate": [0.7, 0.8, 0.9]}
     model = GridSearchCV(pipeline, param_grid=parameters, cv=5)
 
     return model
@@ -57,10 +59,10 @@ def build_model():
 def evaluate_model(model, X_test, Y_test, category_names):
     """make and score predictions based on the given model"""
     Y_pred = model.predict(X_test)
-#    for col in range(Y_pred.shape[1]):
-#        print(category_names[col].upper())
-#        print(classification_report(Y_test.values[:,col], Y_pred[:,col]))
-    print(classification_report(Y_test.values, Y_pred, target_names=category_names))
+    for col in range(Y_pred.shape[1]):
+        print(category_names[col].upper())
+        print(classification_report(Y_test.values[:,col], Y_pred[:,col]))
+#    print(classification_report(Y_test.values, Y_pred, target_names=category_names))
 #    print(multilabel_confusion_matrix(Y_test.values, Y_pred))
 
 
@@ -81,6 +83,8 @@ def main():
 
         print('Training model...')
         model.fit(X_train, Y_train)
+        print("Parameters chosen during grid search:")
+        print(model.best_params_)
 
         print('Evaluating model...')
         evaluate_model(model, X_test, Y_test, category_names)

@@ -30,6 +30,9 @@ def clean_data(df):
     df.drop("categories", axis=1, inplace=True)
     df = pd.concat([df, categories], axis=1)
 
+    # Drop the column with the original message as all analyses will be based on the English version.
+    df.drop("original", axis=1, inplace=True)
+
     # remove duplicate rows and rows containing undefined values
     df.drop(index=df[(df[category_colnames].values != 0) & (df[category_colnames].values != 1)].index,
             inplace=True)
@@ -39,7 +42,6 @@ def clean_data(df):
 
 def save_data(df, database_filename):
     engine = create_engine("sqlite:///" + database_filename)
-    print(f"Shape of data to be saved: {df.shape}")
     df.to_sql("messages", engine, index=False, if_exists="replace")
 
 
